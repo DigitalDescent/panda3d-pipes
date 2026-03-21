@@ -1,136 +1,88 @@
-[![Build Status](https://travis-ci.org/tobspr/P3DModuleBuilder.svg?branch=master)](https://travis-ci.org/tobspr/P3DModuleBuilder)
+# Panda3D Pipes
 
-# Panda3D Module Builder
+> "The internet is a series of pipes"
+> — Some guy, probably.
 
-This tool allows you to seamlessly mix your C++ and Python code for the 
-<a href="http://github.com/panda3d/panda3d">Panda3D Game Engine</a>.
+**NOT PRODUCTION READY. HEAVILY EXPERIMENTAL**
 
-It makes compiling your C++ code the matter of a single mouse-click.
+A networked distributed-object framework for [Panda3D](https://www.panda3d.org/) built on top of Steam networking sockets. It provides authoritative server snapshots with delta compression, client-side interpolation, zone-based interest management, and a DC (distributed class) schema for defining replicated object fields — all driven by a tick-based simulation loop.
 
+> The original foundation of Panda3D pipes is based on the work of Brian Lach from the Panda3D player project.
 
 ## Features
 
- - Automatic Python bindings using `interrogate`
- - Works on Windows, Linux and Mac
+- **Snapshot replication** — The server captures the state of every distributed object each tick and sends delta-compressed snapshots to clients. Only changed fields are transmitted.
+- **Client-side interpolation** — Templated C++ `InterpolatedVariable` types (float, Vec2/3/4, Quaternion) record value history and interpolate smoothly between received snapshots using linear or Hermite curves, with configurable extrapolation.
+- **Zone-based interest** — Clients subscribe to zones; the server only sends object data for zones a client cares about.
+- **DC schema** — Shared `.dc` files define the replicated fields, ownership rules (`ownsend`, `clsend`), and broadcast behaviour for each distributed class.
+- **Distributed object lifecycle** — Objects follow a well-defined lifecycle: `Fresh → Generated → Alive → Disabled → Deleted`, with separate client, server (AI), and owner views.
+- **Clock drift correction** — A drift manager keeps the client simulation clock aligned to the server tick using sliding-window offset averaging and configurable correction thresholds.
+- **Ping / RTT tracking** — Built-in ping protocol with a sliding-window average; per-client latency is available on both the server and client.
+- **Per-client rate control** — Update rate, command rate, and interpolation amount are individually negotiable per client.
+- **C++ performance core** — Snapshot packing, field unpacking (`CClientRepository`), frame management, packed objects, and math utilities are implemented in C++ and exposed to Python via Panda3D's interrogate system.
+- **Steam networking transport** — Uses Valve's `SteamNetworkingSockets` for reliable/unreliable messaging, NAT traversal, and optional Steam authentication.
 
-## Getting started
+## Dependencies
 
+- [Panda3D](https://www.panda3d.org/) 1.10.14+
+- [panda3d-steamworks](https://github.com/DigitalDescent/panda3d-steamworks) — Python/C++ bindings for Steamworks networking
+- [panda3d-toolbox](https://github.com/DigitalDescent/panda3d-toolbox) — Runtime helpers used by the framework
+- **Steam client** running (required for Steam networking sockets)
+- CMake 3.16+, a C++ compiler, and Python 3.10+
 
-#### 1. Clone this repository
+## Building
 
-You can use the download-zip button, or clone this repository. Copy it to a
-suitable path in your project.
-
-#### 2. Write your source code
-
-You can now start to write your C++ code and store it in the `source/` directory.
-Here's a simple example you can start with (save it as `source/example.h` for example):
-
-```cpp
-#ifndef EXAMPLE_H
-#define EXAMPLE_H
-
-#include "pandabase.h"
-
-
-BEGIN_PUBLISH // This exposes all functions in this block to python
-
-inline int multiply(int a, int b) {
-    return a * b;
-}
-
-END_PUBLISH
-
-
-class ExampleClass {
-    PUBLISHED: // Exposes all functions in this scope, use instead of "public:"
-        inline int get_answer() {
-            return 42;
-        };
-};
-
-
-#endif EXAMPLE_H
+```bash
+pip install .
 ```
 
-#### 3. Compile the module
+This invokes the CMake / interrogate pipeline via setuptools to compile the C++ extension module (`panda3d_pipes`).
 
-After you wrote your C++ code, run `python build.py`. It will ask you for
-a module name, for this example we will choose "TestModule".
+Set `SETUPTOOLS_SCM_PRETEND_VERSION` to control the wheel version if building outside of CI.
 
-When the compilation finished, there should now be a `TestModule.pyd` / `TestModule.so` (depending on your platform) generated.
+## Quick Start
 
-#### 4. Use your module
+See the [examples/](examples/) directory for a minimal client/server demo. In two terminals from the repository root:
 
-Using your compiled module is straightforward:
+```bash
+# Terminal 1 — start the server
+python examples/server.py
 
-```python
-import panda3d.core  # Make sure you import this first before importing your module
-
-import TestModule
-
-print(TestModule.multiply(3, 4)) # prints 12
-
-example = TestModule.ExampleClass()
-print(example.get_answer()) # prints 42
-
+# Terminal 2 — connect a client
+python examples/client.py
 ```
 
+The server listens on port 27015, spawns avatars for connecting clients, and relays chat messages. The client connects, sends a greeting, and periodically moves its avatar.
 
+## Configuration
 
-#### 
+Configuration is done through Panda3D PRC variables. Key defaults:
 
-## Requirements
+### Server
 
-- The Panda3D SDK (get it <a href="http://www.panda3d.org/download.php?sdk">here</a>)
-- CMake 2.6 or higher (get it <a href="https://cmake.org/download/">here</a>)
-- windows only: The thirdparty folder installed in the Panda3D sdk folder (See <a href="https://www.panda3d.org/forums/viewtopic.php?f=9&t=18775">here</a>)
+| Variable | Default | Description |
+|---|---|---|
+| `sv-tickrate` | 66 | Simulation tick rate (Hz) |
+| `sv-maxupdaterate` | 255 | Max snapshot send rate per client |
+| `sv-minupdaterate` | 1 | Min snapshot send rate per client |
+| `sv-max-clients` | 24 | Maximum concurrent clients |
+| `sv-snapshot-history` | 50 | Snapshots retained for delta compression |
+| `sv-password` | *empty* | Optional server password |
 
+### Client
 
-**For compiling on Windows 32 bit:**
+| Variable | Default | Description |
+|---|---|---|
+| `cl-updaterate` | 20 | Desired snapshot receive rate |
+| `cl-cmdrate` | 100 | Command send rate |
+| `cl-interp` | 0.1 | Interpolation buffer (seconds) |
+| `cl-interp-ratio` | 2 | Ratio applied to update rate for interp |
+| `cl-ping-interval` | 0.5 | Ping measurement interval (seconds) |
 
-- Visual Studio 2010/2015
+The effective interpolation delay is `max(cl-interp, cl-interp-ratio / cl-updaterate)`.
 
-**For compiling on Windows 64 bit:**
+## License
 
-- Visual Studio 2010/2015
-- Windows SDK 7.1 (be sure to tick the VC++ 64 bit compilers option)
+This project is licensed under the BSD 3-Clause License — see [LICENSE](LICENSE) for details.
 
-
-## Advanced configuration
-
-**Please clean up your built directories after changing the configuration! You can
-do so with passing `--clean` in the command line.**
-
-
-### Command Line
-Command line options are:
-
-- `--optimize=N` to override the optimize option. This overrides the option set in the `config.ini`
-- `--clean` to force a clean rebuild
-
-### config.ini
-Further adjustments can be made in the `config.ini` file:
-
-- You can set `generate_pdb` to `0` or `1` to control whether a `.pdb` file is generated.
-- You can set `optimize` to change the optimization. This has to match the `--optimize=` option of your Panda3D Build.
-- You can set `require_lib_eigen` to `1` to require the Eigen 3 library
-- You can set `require_lib_bullet` to `1` to require the Bullet library
-- You can set `require_lib_freetype` to `1` to require the Freetype library
-- You can set `verbose_igate` to `1` or `2` to get detailed interrogate output (1 = verbose, 2 = very verbose)
-
-### Additional libaries
-
-If you want to include additional (external) libraries, you can create a
-cmake file named `additional_libs.cmake` in the folder of the module builder,
-which will then get included during the build.
-
-If you would like to include the protobuf library for example, your cmake file could look like this:
-
-```cmake
-find_package(Protobuf REQUIRED)
-include_directories(${PROTOBUF_INCLUDE_DIRS})
-set(LIBRARIES "${LIBRARIES};${PROTOBUF_LIBRARIES}")
-
-```
-
+The Steamworks SDK is Copyright © Valve Corporation and is subject to the rules outlined at [Distributing Open Source](https://partner.steamgames.com/doc/sdk/uploading/distributing_opensource).

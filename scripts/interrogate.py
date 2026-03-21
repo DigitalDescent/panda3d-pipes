@@ -23,12 +23,19 @@ if len(sys.argv) != 3:
 MODULE_NAME = sys.argv[1]
 VERBOSE_LVL = int(sys.argv[2])  # Assume the user did specify something valid
 
+# The compiled binary is always called "native" (native.pyd / native.so)
+# so interrogate must generate PyInit_native.
+NATIVE_TARGET = "native"
+
 
 def check_ignore(source):
     """ This function checks if a file is on the ignore list """
     for f in ["interrogate_module.cpp", "interrogate_wrapper.cpp"]:
         if f.lower() in source.lower():
             return False
+    # Extension method files are compiled directly, not interrogated.
+    if source.lower().endswith("_ext.cxx"):
+        return False
     return True
 
 
@@ -74,7 +81,7 @@ def interrogate():
     cmd += ["-srcdir", "."]
     cmd += ["-oc", "interrogate_wrapper.cpp"]
     cmd += ["-od", "interrogate.in"]
-    cmd += ["-module", MODULE_NAME]
+    cmd += ["-module", NATIVE_TARGET]
     cmd += ["-library", MODULE_NAME]
 
     if PandaSystem.get_major_version() > 1 or PandaSystem.get_minor_version() > 9:
@@ -97,11 +104,15 @@ def interrogate():
                     "_far", "__near", "__far", "__stdcall"]
 
     if get_compiler_name() == "GCC":
-        defines += ['__attribute__\(x\)=']
+        defines += [r'__attribute__\(x\)=']
         if is_64_bit():
             defines += ['_LP64']
         else:
             defines += ['__i386__']
+
+    # Ensure dcbase.h defers to Panda's own stream/Filename typedefs
+    # instead of declaring conflicting std:: ones.
+    defines += ['WITHIN_PANDA']
 
     for define in defines:
         cmd += ["-D" + define]
@@ -121,7 +132,7 @@ def interrogate_module():
         # Older panda3d versions don't have this
         cmd += ["-import", "panda3d.core"]
 
-    cmd += ["-module", MODULE_NAME]
+    cmd += ["-module", NATIVE_TARGET]
     cmd += ["-library", MODULE_NAME]
     cmd += ["-oc", "interrogate_module.cpp"]
     cmd += ["interrogate.in"]

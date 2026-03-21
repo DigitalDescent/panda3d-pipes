@@ -1,0 +1,32 @@
+// Example DC file for panda3d-pipes basic client/server demo.
+// Defines a simple DistributedChat object that can broadcast messages,
+// and a DistributedAvatar object that replicates position.
+
+from panda3d_pipes.objects import DistributedObject/AI
+from examples.objects import DistributedChat/AI
+from examples.objects import DistributedAvatar/AI
+
+dclass DistributedObject {
+};
+
+
+// A simple chat object that broadcasts messages to all clients.
+dclass DistributedChat : DistributedObject {
+    // Server -> Client: broadcast a chat message to all interested clients.
+    chatMessage(string, string) broadcast ram;
+
+    // Client -> Server: client sends a chat message.
+    sendChat(string) clsend;
+};
+
+// A simple avatar object that replicates position to all clients.
+// The owner client sends setPos/setH directly; the server rebroadcasts
+// to other interested clients.  Client-side interpolation smooths
+// the received values between network updates.
+dclass DistributedAvatar : DistributedObject {
+    // Replicated position (x, y, z).  Owner can send, server broadcasts.
+    setPos(float64, float64, float64) ownsend broadcast ram;
+
+    // Replicated heading.  Owner can send, server broadcasts.
+    setH(float64) ownsend broadcast ram;
+};

@@ -4,6 +4,6 @@
 
 #include "notifyCategoryProxy.h"
 
-NotifyCategoryDecl(mymodule, EXPORT_CLASS, EXPORT_TEMPL);
+NotifyCategoryDecl(pipes, EXPORT_CLASS, EXPORT_TEMPL);
 
-extern void init_libmymodule();
+extern void init_libpipes();

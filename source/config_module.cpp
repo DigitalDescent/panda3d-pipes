@@ -1,32 +1,37 @@
 
 #include "config_module.h"
-
-/*
-
-Include all your dynamically typed classes here, e.g.
-#include "my_dynamic_class.h"
-
-*/
-
 #include "dconfig.h"
 
-Configure(config_mymodule);
-NotifyCategoryDef(mymodule , "");
+#include "packedObject.h"
+#include "clientFrame.h"
+#include "frameSnapshot.h"
+#include "frameSnapshotEntry.h"
 
-ConfigureFn(config_mymodule) {
-  init_libmymodule();
+Configure(config_pipes);
+NotifyCategoryDef(pipes , "");
+
+ConfigureFn(config_pipes) {
+  init_libpipes();
 }
 
+/**
+ * Initializes the library.  This must be called at least once before any of
+ * the functions or classes in this library can be used.  Normally it will be
+ * called by the static initializers and need not be called explicitly, but
+ * special cases exist.
+ */
 void
-init_libmymodule() {
+init_libpipes() {
   static bool initialized = false;
   if (initialized) {
     return;
   }
   initialized = true;
 
-  // Init your dynamic types here, e.g.:
-  // MyDynamicClass::init_type();
+  ClientFrame::init_type();
+  FrameSnapshot::init_type();
+  FrameSnapshotEntry::init_type();
+  PackedObject::init_type();
 
   return;
 }

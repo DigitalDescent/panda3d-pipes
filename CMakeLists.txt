@@ -102,6 +102,19 @@ if (WIN32)
   set(PYTHON_LIBRARIES "${WIN_PANDA_PATH}/python/libs/python${PYTHONVER}.lib")
   set(PYTHON_INCLUDE_DIRS "${WIN_PANDA_PATH}/python/include")
 
+  # If the Panda SDK doesn't bundle this Python version, locate it from the
+  # interpreter that is running the build (passed via -DPYTHON_EXECUTABLE).
+  if(NOT EXISTS "${PYTHON_LIBRARIES}")
+    execute_process(
+      COMMAND "${PYTHON_EXECUTABLE}" -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))"
+      OUTPUT_VARIABLE _PY_LIBDIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+      COMMAND "${PYTHON_EXECUTABLE}" -c "import sysconfig; print(sysconfig.get_paths()['include'])"
+      OUTPUT_VARIABLE _PY_INCDIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(PYTHON_LIBRARIES "${_PY_LIBDIR}/python${PYTHONVER}.lib")
+    set(PYTHON_INCLUDE_DIRS "${_PY_INCDIR}")
+  endif()
+
   # [LIB] Bullet
   if(HAVE_LIB_BULLET)
 
@@ -162,9 +175,15 @@ if (WIN32)
   link_directories("${PANDA_LIBRARY_DIRS}")
 
 else()
-  set(PYTHONVERDOT CACHE STRING "2.7")
-  set(Python_ADDITIONAL_VERSIONS ${PYTHONVERDOT})
-  find_package(PythonLibs REQUIRED)
+
+  # Use the modern FindPython3 module, hinting at the exact interpreter
+  # passed via -DPYTHON_EXECUTABLE so we don't pick up a different system Python.
+  set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+
+  # Alias to the variable names the rest of the file expects.
+  set(PYTHON_INCLUDE_DIRS "${Python3_INCLUDE_DIRS}")
+  set(PYTHON_LIBRARIES    "${Python3_LIBRARIES}")
 
   # [LIB] Bullet
   if (HAVE_LIB_BULLET)
@@ -365,6 +384,9 @@ endif()
 add_definitions("/DPB_MODULE=${PROJECT_NAME}")
 add_definitions("/DPB_CFG_MODULE=${PROJECT_NAME}")
 
+# Ensure dcbase.h defers to Panda's own Filename/stream typedefs.
+add_definitions("-DWITHIN_PANDA")
+
 # Collect sources for compiling
 file(GLOB_RECURSE SOURCES source/*.cpp source/*.cxx source/*.I source/*.hpp source/*.h source/*.cc source/*.c)
 include_directories("source/")
@@ -390,21 +412,24 @@ if ((EXISTS "${CMAKE_CURRENT_LIST_DIR}/additional_libs.cmake"))
 endif()
 
 
-# Build library
+# Build library — always called "native" so it produces native.pyd / native.so
+# inside the Python package directory created by finalize.py.
+set(TARGET_NAME "native")
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # macOS won't let us link a .so with another .so, so make a .dylib
-  add_library(${PROJECT_NAME} SHARED ${SOURCES})
+  add_library(${TARGET_NAME} SHARED ${SOURCES})
   # Python doesn't detect .dylibs, so rename it .so
   set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 else()
-  add_library(${PROJECT_NAME} MODULE ${SOURCES})
+  add_library(${TARGET_NAME} MODULE ${SOURCES})
 endif()
 
 # Don't add lib prefix on Linux
-set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
+set_target_properties(${TARGET_NAME} PROPERTIES PREFIX "")
 
 # Add the required libraries
-target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES} ${PANDA_LIBRARIES} ${LIBRARIES})
+target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES} ${PANDA_LIBRARIES} ${LIBRARIES})
 
 if(WIN32)
 #   # Eventually link core.pyd?
@@ -412,9 +437,9 @@ else()
   set(CMAKE_MODULE_LINKER_FLAGS ${PANDA_CORE_PATH})
 endif()
 
-# After building, copy the file to the current directory
+# After building, create the Python package directory and copy files
 add_custom_command(
-    TARGET ${PROJECT_NAME}
+    TARGET ${TARGET_NAME}
     POST_BUILD
     COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
@@ -433,9 +458,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
   foreach(lib ${REQ_LIBRARIES})
     add_custom_command(
-      TARGET ${PROJECT_NAME}
+      TARGET ${TARGET_NAME}
       POST_BUILD
-      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
   endforeach()
 endif()

@@ -68,6 +68,13 @@ MSVC_VERSIONS = [
     MSVCVersion(1940, "Visual Studio 17 2022", "vc143"),
     MSVCVersion(1941, "Visual Studio 17 2022", "vc143"),
     MSVCVersion(1942, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1943, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1944, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1945, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1946, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1947, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1948, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1949, "Visual Studio 17 2022", "vc143"),
 
     MSVCVersion(1950, "Visual Studio 18 2026", "vc144"),
     MSVCVersion(1951, "Visual Studio 18 2026", "vc144"),
@@ -414,13 +421,23 @@ def get_win_thirdparty_dir():
     bit_suffix = "-x64" if is_64_bit() else ""
     full_suffix = "-" + msvc_suffix + bit_suffix
 
+    # Canonical vc14 suffix used by official Panda3D thirdparty downloads
+    # (ABI-compatible with vc141/vc142/vc143/vc144).
+    vc14_suffix = "-vc14" + bit_suffix
+
+    suffixes = ["", full_suffix]
+    if vc14_suffix != full_suffix:
+        suffixes.append(vc14_suffix)
+
     possible_dirs = []
 
     for base_dir in [".", "..", "../..", "thirdparty", "thirdparty" + full_suffix]:
-        for thirdparty_suffix in ["", full_suffix]:
-            for folder_suffix in ["", full_suffix]:
-                possible_dirs.append(join(
-                    base_dir, "thirdparty" + thirdparty_suffix, "win-libs" + folder_suffix))
+        for thirdparty_suffix in suffixes:
+            for folder_suffix in suffixes:
+                path = join(base_dir, "thirdparty" + thirdparty_suffix,
+                            "win-libs" + folder_suffix)
+                if path not in possible_dirs:
+                    possible_dirs.append(path)
 
     error_msg = ("The thirdparty directory could not be found. You can get it from "
                  "https://www.panda3d.org/forums/viewtopic.php?f=9&t=18775 by downloading "
