@@ -14,7 +14,7 @@ runs:
 
     - name: Install Interrogate 
       shell: bash
-      run: pip isntall panda3d-interrogate
+      run: pip install panda3d-interrogate
 
     - name: Compute semantic version
       id: semver
