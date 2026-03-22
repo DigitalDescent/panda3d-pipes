@@ -94,7 +94,7 @@ class ExampleServer(ServerRepository):
 
         # Create an NPC avatar that orbits in a circle.  Because it has no
         # owner, every client sees it as a *remote* object and will
-        # interpolate its position – handy for testing even with one client.
+        # interpolate its position - handy for testing even with one client.
         self.npc = DistributedAvatarAI()
         self.generate_object(self.npc, zone_id=ZONE_LOBBY)
         base.taskMgr.add(self._move_npc_task, "moveNpc")

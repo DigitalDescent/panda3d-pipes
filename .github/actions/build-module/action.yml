@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Composite action – Install build tools and compile the module from source.
+# Composite action - Install build tools and compile the module from source.
 # ──────────────────────────────────────────────────────────────────────────────
 name: Prepare Panda3D SDK
 description: >

@@ -32,6 +32,25 @@ public:
 
   bool pack_required_field(DCPacker &packer, PyObject *distobj,
                            const DCField *field) const;
+
+private:
+  /**
+   * Implementation of DCClass::PythonClassDefs which actually stores the
+   * Python pointers.  This needs to be defined here rather than on DCClass
+   * itself, since DCClass cannot include Python.h or call Python functions.
+   */
+  class PythonClassDefsImpl : public DCClass::PythonClassDefs {
+  public:
+    virtual ~PythonClassDefsImpl() {
+      Py_XDECREF(_class_def);
+      Py_XDECREF(_owner_class_def);
+    }
+
+    PyObject *_class_def = nullptr;
+    PyObject *_owner_class_def = nullptr;
+  };
+
+  PythonClassDefsImpl *do_get_defs() const;
 };
 
 #endif  // HAVE_PYTHON

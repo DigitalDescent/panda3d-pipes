@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# CI / CD – Build Panda3D from source (cached), compile wheels,
+# CI / CD - Build Panda3D from source (cached), compile wheels,
 # and publish to PyPI on tagged releases.
 #
 # Inspired by the panda3d CI workflow.  Each (os × python-version) job
@@ -33,7 +33,7 @@ permissions:
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
-  # Build wheels  –  one job per (platform × Python version)
+  # Build wheels  -  one job per (platform × Python version)
   # ────────────────────────────────────────────────────────────────────────────
   build:
     name: "${{ matrix.os }} / py${{ matrix.python-version }}"

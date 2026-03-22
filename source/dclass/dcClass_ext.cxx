@@ -15,12 +15,26 @@
 #ifdef HAVE_PYTHON
 
 /**
+ * Returns (or creates) the PythonClassDefsImpl attached to this DCClass.
+ */
+Extension<DCClass>::PythonClassDefsImpl *Extension<DCClass>::
+do_get_defs() const {
+  if (_this->_python_class_defs == nullptr) {
+    ((DCClass *)_this)->_python_class_defs = new PythonClassDefsImpl;
+  }
+  return (PythonClassDefsImpl *)_this->_python_class_defs.p();
+}
+
+/**
  * Returns true if the DCClass object has an associated Python class
  * definition, false otherwise.
  */
 bool Extension<DCClass>::
 has_class_def() const {
-  return _this->has_class_def();
+  if (_this->_python_class_defs == nullptr) {
+    return false;
+  }
+  return do_get_defs()->_class_def != nullptr;
 }
 
 /**
@@ -28,7 +42,10 @@ has_class_def() const {
  */
 void Extension<DCClass>::
 set_class_def(PyObject *class_def) {
-  _this->set_class_def(class_def);
+  PythonClassDefsImpl *defs = do_get_defs();
+  Py_XDECREF(defs->_class_def);
+  Py_XINCREF(class_def);
+  defs->_class_def = class_def;
 }
 
 /**
@@ -37,7 +54,9 @@ set_class_def(PyObject *class_def) {
  */
 PyObject *Extension<DCClass>::
 get_class_def() const {
-  return _this->get_class_def();
+  PyObject *result = do_get_defs()->_class_def;
+  Py_XINCREF(result);
+  return result;
 }
 
 /**
@@ -46,7 +65,10 @@ get_class_def() const {
  */
 bool Extension<DCClass>::
 has_owner_class_def() const {
-  return _this->has_owner_class_def();
+  if (_this->_python_class_defs == nullptr) {
+    return false;
+  }
+  return do_get_defs()->_owner_class_def != nullptr;
 }
 
 /**
@@ -54,7 +76,10 @@ has_owner_class_def() const {
  */
 void Extension<DCClass>::
 set_owner_class_def(PyObject *owner_class_def) {
-  _this->set_owner_class_def(owner_class_def);
+  PythonClassDefsImpl *defs = do_get_defs();
+  Py_XDECREF(defs->_owner_class_def);
+  Py_XINCREF(owner_class_def);
+  defs->_owner_class_def = owner_class_def;
 }
 
 /**
@@ -63,7 +88,9 @@ set_owner_class_def(PyObject *owner_class_def) {
  */
 PyObject *Extension<DCClass>::
 get_owner_class_def() const {
-  return _this->get_owner_class_def();
+  PyObject *result = do_get_defs()->_owner_class_def;
+  Py_XINCREF(result);
+  return result;
 }
 
 /**

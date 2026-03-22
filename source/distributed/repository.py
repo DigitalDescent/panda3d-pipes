@@ -19,8 +19,8 @@ from panda3d_toolbox import runtime
 from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.distributed.PyDatagram import PyDatagram
 
-from ..clock import ClockDriftManager
-from .config import (
+from panda3d_pipes.distributed.constants import NetMessages
+from panda3d_pipes.distributed.config import (
     cl_cmdrate,
     cl_ping,
     cl_ping_interval,
@@ -33,8 +33,8 @@ from .config import (
     sv_password,
     sv_tickrate,
 )
-from .constants import NetMessages
-from .native import (
+from panda3d_pipes.clock import ClockDriftManager
+from panda3d_pipes.native import (
     CClientRepository,
     ClientFrame,
     ClientFrameManager,

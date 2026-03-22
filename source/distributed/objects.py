@@ -41,11 +41,11 @@ class BaseDistributedObject(DirectObject):
 
     DO lifetime
     -----------
-    __init__        – brand new, not yet alive
-    generate        – alive, but baseline state not yet applied
-    announce_generate – fully alive with known initial state (client-only)
-    disable         – temporarily removed / cached (client-only)
-    delete          – gone for good
+    __init__        - brand new, not yet alive
+    generate        - alive, but baseline state not yet applied
+    announce_generate - fully alive with known initial state (client-only)
+    disable         - temporarily removed / cached (client-only)
+    delete          - gone for good
     """
 
     notify = directNotify.newCategory("BaseDistributedObject")
