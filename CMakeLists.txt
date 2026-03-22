@@ -420,7 +420,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # macOS won't let us link a .so with another .so, so make a .dylib
   add_library(${TARGET_NAME} SHARED ${SOURCES})
   # Python doesn't detect .dylibs, so rename it .so
-  set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
+  set_target_properties(${TARGET_NAME} PROPERTIES SUFFIX ".so")
 else()
   add_library(${TARGET_NAME} MODULE ${SOURCES})
 endif()
@@ -437,22 +437,17 @@ else()
   set(CMAKE_MODULE_LINKER_FLAGS ${PANDA_CORE_PATH})
 endif()
 
-# After building, create the Python package directory and copy files
-add_custom_command(
-    TARGET ${TARGET_NAME}
-    POST_BUILD
-    COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
-
-# Make shared library paths absolute on macOS
+# Make shared library paths absolute on macOS (must run before finalize copies the binary)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   execute_process(
     COMMAND "${PYTHON_EXECUTABLE}" "-B" "scripts/common.py" "--print-lib-path"
     OUTPUT_VARIABLE PANDA_LIB_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
   execute_process(
     COMMAND "${PYTHON_EXECUTABLE}" "-B" "scripts/common.py" "--print-short-version"
     OUTPUT_VARIABLE PANDA_SHORT_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
 
@@ -460,7 +455,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(
       TARGET ${TARGET_NAME}
       POST_BUILD
-      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "${TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
-      WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+      COMMAND install_name_tool -change "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "$<TARGET_FILE:${TARGET_NAME}>")
   endforeach()
 endif()
+
+# After building, create the Python package directory and copy files
+add_custom_command(
+    TARGET ${TARGET_NAME}
+    POST_BUILD
+    COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
