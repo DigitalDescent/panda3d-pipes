@@ -14,9 +14,11 @@
 
 #ifdef HAVE_PYTHON
 
-/**
- * Returns (or creates) the PythonClassDefsImpl attached to this DCClass.
- */
+#if PANDA_MINOR_VERSION >= 11
+// Panda3D 1.11+: class_def storage moved into PythonClassDefsImpl attached to
+// DCClass::_python_class_defs.  The base DCClass no longer has direct
+// has_class_def / set_class_def / get_class_def methods.
+
 Extension<DCClass>::PythonClassDefsImpl *Extension<DCClass>::
 do_get_defs() const {
   if (_this->_python_class_defs == nullptr) {
@@ -25,10 +27,6 @@ do_get_defs() const {
   return (PythonClassDefsImpl *)_this->_python_class_defs.p();
 }
 
-/**
- * Returns true if the DCClass object has an associated Python class
- * definition, false otherwise.
- */
 bool Extension<DCClass>::
 has_class_def() const {
   if (_this->_python_class_defs == nullptr) {
@@ -37,9 +35,6 @@ has_class_def() const {
   return do_get_defs()->_class_def != nullptr;
 }
 
-/**
- * Sets the class object associated with this DistributedClass.
- */
 void Extension<DCClass>::
 set_class_def(PyObject *class_def) {
   PythonClassDefsImpl *defs = do_get_defs();
@@ -48,10 +43,6 @@ set_class_def(PyObject *class_def) {
   defs->_class_def = class_def;
 }
 
-/**
- * Returns the class object that was previously associated with this
- * DistributedClass.  This will return a new reference to the object.
- */
 PyObject *Extension<DCClass>::
 get_class_def() const {
   PyObject *result = do_get_defs()->_class_def;
@@ -59,10 +50,6 @@ get_class_def() const {
   return result;
 }
 
-/**
- * Returns true if the DCClass object has an associated Python owner class
- * definition, false otherwise.
- */
 bool Extension<DCClass>::
 has_owner_class_def() const {
   if (_this->_python_class_defs == nullptr) {
@@ -71,9 +58,6 @@ has_owner_class_def() const {
   return do_get_defs()->_owner_class_def != nullptr;
 }
 
-/**
- * Sets the owner class object associated with this DistributedClass.
- */
 void Extension<DCClass>::
 set_owner_class_def(PyObject *owner_class_def) {
   PythonClassDefsImpl *defs = do_get_defs();
@@ -82,16 +66,48 @@ set_owner_class_def(PyObject *owner_class_def) {
   defs->_owner_class_def = owner_class_def;
 }
 
-/**
- * Returns the owner class object that was previously associated with this
- * DistributedClass.
- */
 PyObject *Extension<DCClass>::
 get_owner_class_def() const {
   PyObject *result = do_get_defs()->_owner_class_def;
   Py_XINCREF(result);
   return result;
 }
+
+#else
+// Panda3D 1.10: DCClass has direct has_class_def / set_class_def /
+// get_class_def methods that are dllexport-ed.
+
+bool Extension<DCClass>::
+has_class_def() const {
+  return _this->has_class_def();
+}
+
+void Extension<DCClass>::
+set_class_def(PyObject *class_def) {
+  _this->set_class_def(class_def);
+}
+
+PyObject *Extension<DCClass>::
+get_class_def() const {
+  return _this->get_class_def();
+}
+
+bool Extension<DCClass>::
+has_owner_class_def() const {
+  return _this->has_owner_class_def();
+}
+
+void Extension<DCClass>::
+set_owner_class_def(PyObject *owner_class_def) {
+  _this->set_owner_class_def(owner_class_def);
+}
+
+PyObject *Extension<DCClass>::
+get_owner_class_def() const {
+  return _this->get_owner_class_def();
+}
+
+#endif  // PANDA_MINOR_VERSION >= 11
 
 /**
  * Looks up the current value of the indicated field by calling the

@@ -17,6 +17,7 @@
 #include "extension.h"
 #include "dcClass.h"
 #include "dcPacker.h"
+#include "pandaVersion.h"
 #include "py_panda.h"
 
 template<>
@@ -33,6 +34,7 @@ public:
   bool pack_required_field(DCPacker &packer, PyObject *distobj,
                            const DCField *field) const;
 
+#if PANDA_MINOR_VERSION >= 11
 private:
   /**
    * Implementation of DCClass::PythonClassDefs which actually stores the
@@ -51,6 +53,7 @@ private:
   };
 
   PythonClassDefsImpl *do_get_defs() const;
+#endif
 };
 
 #endif  // HAVE_PYTHON
