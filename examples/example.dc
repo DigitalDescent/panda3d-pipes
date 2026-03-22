@@ -2,7 +2,7 @@
 // Defines a simple DistributedChat object that can broadcast messages,
 // and a DistributedAvatar object that replicates position.
 
-from panda3d_pipes.objects import DistributedObject/AI
+from panda3d_pipes.distributed.objects import DistributedObject/AI
 from examples.objects import DistributedChat/AI
 from examples.objects import DistributedAvatar/AI
 

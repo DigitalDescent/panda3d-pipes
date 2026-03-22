@@ -16,7 +16,7 @@
 #include "dcClass.h"
 #include "dcPacker.h"
 #include "dcField.h"
-#include "dcField_ext.h"
+#include "dc_python.h"
 #include "dcParameter.h"
 #include "dcClassParameter.h"
 
@@ -37,7 +37,7 @@ encode_field(PyObject *dist_obj, DCClass *dclass, DCPacker &packer,
 
   // Encode the field data.
   packer.begin_pack(field);
-  //invoke_extension(field).pack_args(args);
+  //dc_python::dc_field_pack_args(field, packer, args);
   if (!packer.end_pack()) {
     return false;
   }
@@ -104,7 +104,7 @@ encode_object_state(PyObject *dist_obj, DCClass *dclass, DCPacker &packer,
     packer.begin_pack(field);
 
     if (args != nullptr) {
-      if (!invoke_extension(field).pack_args(packer, args)) {
+      if (!dc_python::dc_field_pack_args(field, packer, args)) {
         if (!from_dict) {
           Py_DECREF(args);
         }

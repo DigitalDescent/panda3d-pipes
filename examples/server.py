@@ -60,15 +60,15 @@ class GameShowBase(SteamShowBase):
 loadPrcFileData("", """
 window-type none
 notify-level-ServerRepository info
-sv-tickrate 30
-sv-port 27015
-sv-max-clients 8
+pipes-tickrate 30
+pipes-port 27015
+pipes-max-clients 8
 """)
 
 # Start Panda3D in headless mode.
 base = GameShowBase(windowType="none")
 
-from panda3d_pipes.repository import ServerRepository
+from panda3d_pipes.distributed.repository import ServerRepository
 from examples.objects import DistributedChatAI, DistributedAvatarAI
 
 import math

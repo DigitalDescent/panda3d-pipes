@@ -9,7 +9,7 @@ Defines both client-side and server-side (AI) versions of:
 from panda3d.core import Vec3
 
 from panda3d_pipes.native import InterpolatedFloat, InterpolatedVec3
-from panda3d_pipes.objects import DistributedObject, DistributedObjectAI
+from panda3d_pipes.distributed.objects import DistributedObject, DistributedObjectAI
 
 # ---------------------------------------------------------------------------
 # Chat object -- client side
