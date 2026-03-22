@@ -12,6 +12,10 @@ runs:
       shell: bash
       run: pip install build "setuptools>=64" wheel
 
+    - name: Install Interrogate 
+      shell: bash
+      run: pip isntall panda3d-interrogate
+
     - name: Compute semantic version
       id: semver
       uses: paulhatch/semantic-version@v5.4.0
