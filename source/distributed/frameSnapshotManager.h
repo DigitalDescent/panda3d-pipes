@@ -13,7 +13,6 @@
 #include "config_module.h"
 #include "packedObject.h"
 #include "pmap.h"
-#include "extension.h"
 #include "datagram.h"
 
 #include "dcbase.h"

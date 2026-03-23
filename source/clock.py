@@ -3,13 +3,13 @@ from __future__ import annotations
 from panda3d.core import ConfigVariableBool, ConfigVariableInt
 from panda3d_toolbox import runtime
 
-cl_clock_correction: ConfigVariableBool = ConfigVariableBool("cl-clock-correction", True)
-cl_clockdrift_max_ms: ConfigVariableInt = ConfigVariableInt("cl-clock-drift-max-ms", 150)
-cl_clock_show_debug_info: ConfigVariableBool = ConfigVariableBool("cl-clock-show-debug-info", False)
-cl_clock_correction_force_server_tick: ConfigVariableInt = ConfigVariableInt("cl-clock-correction-force-server-tick", 999)
-cl_clock_correction_adjustment_max_amount: ConfigVariableInt = ConfigVariableInt("cl-clock-correction-adjustment-max-amount", 200)
-cl_clock_correction_adjustment_min_offset: ConfigVariableInt = ConfigVariableInt("cl-clock-correction-adjustment-min-offset", 10)
-cl_clock_correction_adjustment_max_offset: ConfigVariableInt = ConfigVariableInt("cl-clock-correction-adjustment-max-offset", 90)
+cl_clock_correction: ConfigVariableBool = ConfigVariableBool("pipes-clock-correction", True)
+cl_clockdrift_max_ms: ConfigVariableInt = ConfigVariableInt("pipes-clock-drift-max-ms", 150)
+cl_clock_show_debug_info: ConfigVariableBool = ConfigVariableBool("pipes-clock-show-debug-info", False)
+cl_clock_correction_force_server_tick: ConfigVariableInt = ConfigVariableInt("pipes-clock-correction-force-server-tick", 999)
+cl_clock_correction_adjustment_max_amount: ConfigVariableInt = ConfigVariableInt("pipes-clock-correction-adjustment-max-amount", 200)
+cl_clock_correction_adjustment_min_offset: ConfigVariableInt = ConfigVariableInt("pipes-clock-correction-adjustment-min-offset", 10)
+cl_clock_correction_adjustment_max_offset: ConfigVariableInt = ConfigVariableInt("pipes-clock-correction-adjustment-max-offset", 90)
 
 
 class ClockDriftManager:

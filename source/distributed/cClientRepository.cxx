@@ -10,10 +10,9 @@
 #include "config_module.h"
 #include "dcClass.h"
 #include "dcField.h"
-#include "dcField_ext.h"
+#include "dc_python.h"
 #include "dcParameter.h"
 #include "dcPacker.h"
-#include "extension.h"
 #include "pStatCollector.h"
 #include "pStatTimer.h"
 
@@ -158,7 +157,7 @@ unpack_object_state(DatagramIterator &dgi, const DOData *odata) {
     packer.set_unpack_data(data + dgi.get_current_index(), dgi.get_remaining_size(), false);
     packer.begin_unpack(field);
     unpack_args_coll.start();
-    PyObject *args = invoke_extension(field).unpack_args(packer);
+    PyObject *args = dc_python::dc_field_unpack_args(field, packer);
     unpack_args_coll.stop();
     packer.end_unpack();
 

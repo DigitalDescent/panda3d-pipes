@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Composite action – Install build tools, build & cache Panda3D from source,
+# Composite action - Install build tools, build & cache Panda3D from source,
 # and prepare the SDK environment (PATH, thirdparty junctions).
 # ──────────────────────────────────────────────────────────────────────────────
 name: Prepare Panda3D SDK

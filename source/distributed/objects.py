@@ -22,9 +22,9 @@ from panda3d_toolbox import runtime
 from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.showbase.DirectObject import DirectObject
 
-from .config import get_client_interp_amount
-from .constants import DOState
-from .native import (
+from panda3d_pipes.distributed.config import get_client_interp_amount
+from panda3d_pipes.distributed.constants import DOState
+from panda3d_pipes.native import (
     InterpolatedFloat,
     InterpolatedQuat,
     InterpolatedVec2,
@@ -41,11 +41,11 @@ class BaseDistributedObject(DirectObject):
 
     DO lifetime
     -----------
-    __init__        – brand new, not yet alive
-    generate        – alive, but baseline state not yet applied
-    announce_generate – fully alive with known initial state (client-only)
-    disable         – temporarily removed / cached (client-only)
-    delete          – gone for good
+    __init__        - brand new, not yet alive
+    generate        - alive, but baseline state not yet applied
+    announce_generate - fully alive with known initial state (client-only)
+    disable         - temporarily removed / cached (client-only)
+    delete          - gone for good
     """
 
     notify = directNotify.newCategory("BaseDistributedObject")
