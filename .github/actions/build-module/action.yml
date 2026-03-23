@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Composite action – Install build tools and compile the module from source.
+# Composite action - Install build tools and compile the module from source.
 # ──────────────────────────────────────────────────────────────────────────────
 name: Prepare Panda3D SDK
 description: >
@@ -60,7 +60,9 @@ runs:
         PYTHONPATH: ${{ github.workspace }}/panda3d-src/built
         LD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
         DYLD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
-      run: python -m build --wheel
+      # CI builds Panda3D from source (not pip-installable), so we must
+      # skip build isolation and rely on PYTHONPATH to find it.
+      run: python -m build --wheel --no-isolation
 
     # PyPI rejects bare "linux_x86_64" tags; auditwheel converts them to
     # the appropriate manylinux tag.

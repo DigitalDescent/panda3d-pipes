@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# CI / CD – Build Panda3D from source (cached), compile wheels,
+# CI / CD - Build Panda3D from source (cached), compile wheels,
 # and publish to PyPI on tagged releases.
 #
 # Inspired by the panda3d CI workflow.  Each (os × python-version) job
@@ -18,12 +18,12 @@ on:
     inputs:
       panda3d_ref:
         description: "Panda3D git ref (branch / tag / SHA)"
-        default: "release/1.10.x"
+        default: "master"
         type: string
 
 env:
   # Panda3D source to build against.  Override via workflow_dispatch input.
-  PANDA3D_REF: ${{ inputs.panda3d_ref || 'release/1.10.x' }}
+  PANDA3D_REF: ${{ inputs.panda3d_ref || 'master' }}
   # Panda3D thirdparty tools version (for Windows & macOS native deps).
   P3D_TOOLS_VER: "1.10.16"
 
@@ -33,7 +33,7 @@ permissions:
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
-  # Build wheels  –  one job per (platform × Python version)
+  # Build wheels  -  one job per (platform × Python version)
   # ────────────────────────────────────────────────────────────────────────────
   build:
     name: "${{ matrix.os }} / py${{ matrix.python-version }}"

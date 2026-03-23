@@ -98,8 +98,8 @@ class GameShowBase(SteamShowBase):
 
 base = GameShowBase(windowType="none")
 
-from panda3d_pipes.repository import ClientRepository
-from panda3d_pipes.config import sv_password
+from panda3d_pipes.distributed.repository import ClientRepository
+from panda3d_pipes.distributed.config import sv_password
 
 # ---------------------------------------------------------------------------
 

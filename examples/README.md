@@ -37,12 +37,12 @@ The server will log client connections, chat messages, and avatar movement. The 
 ## Configuration
 
 Server-side PRC variables (set in `server.py` or a PRC file):
-- `sv-tickrate` — simulation tick rate (default 30)
-- `sv-port` — listen port (default 27015)
-- `sv-max-clients` — max concurrent clients (default 8)
-- `sv-password` — optional server password
+- `pipes-tickrate` — simulation tick rate (default 30)
+- `pipes-port` — listen port (default 27015)
+- `pipes-max-clients` — max concurrent clients (default 8)
+- `pipes-password` — optional server password
 
 Client-side PRC variables:
-- `cl-updaterate` — requested snapshot rate from server
-- `cl-cmdrate` — command send rate
-- `cl-interp` / `cl-interp-ratio` — interpolation settings
+- `pipes-updaterate` — requested snapshot rate from server
+- `pipes-cmdrate` — command send rate
+- `pipes-interp` / `pipes-interp-ratio` — interpolation settings

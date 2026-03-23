@@ -33,8 +33,11 @@ def check_ignore(source):
     for f in ["interrogate_module.cpp", "interrogate_wrapper.cpp"]:
         if f.lower() in source.lower():
             return False
-    # Extension method files are compiled directly, not interrogated.
+    # Extension method files and DC Python helpers are compiled directly,
+    # not interrogated.
     if source.lower().endswith("_ext.cxx"):
+        return False
+    if "dc_python" in source.lower():
         return False
     return True
 
@@ -82,7 +85,7 @@ def interrogate():
     cmd += ["-oc", "interrogate_wrapper.cpp"]
     cmd += ["-od", "interrogate.in"]
     cmd += ["-module", NATIVE_TARGET]
-    cmd += ["-library", MODULE_NAME]
+    cmd += ["-library", NATIVE_TARGET]
 
     if PandaSystem.get_major_version() > 1 or PandaSystem.get_minor_version() > 9:
         # Add nomangle option, but only for recent builds
@@ -133,7 +136,7 @@ def interrogate_module():
         cmd += ["-import", "panda3d.core"]
 
     cmd += ["-module", NATIVE_TARGET]
-    cmd += ["-library", MODULE_NAME]
+    cmd += ["-library", NATIVE_TARGET]
     cmd += ["-oc", "interrogate_module.cpp"]
     cmd += ["interrogate.in"]
 

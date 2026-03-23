@@ -58,28 +58,21 @@ The server listens on port 27015, spawns avatars for connecting clients, and rel
 
 Configuration is done through Panda3D PRC variables. Key defaults:
 
-### Server
-
 | Variable | Default | Description |
 |---|---|---|
-| `sv-tickrate` | 66 | Simulation tick rate (Hz) |
-| `sv-maxupdaterate` | 255 | Max snapshot send rate per client |
-| `sv-minupdaterate` | 1 | Min snapshot send rate per client |
-| `sv-max-clients` | 24 | Maximum concurrent clients |
-| `sv-snapshot-history` | 50 | Snapshots retained for delta compression |
-| `sv-password` | *empty* | Optional server password |
+| `pipes-tickrate` | 66 | Simulation tick rate (Hz) |
+| `pipes-maxupdaterate` | 255 | Max snapshot send rate per client |
+| `pipes-minupdaterate` | 1 | Min snapshot send rate per client |
+| `pipes-max-clients` | 24 | Maximum concurrent clients |
+| `pipes-snapshot-history` | 50 | Snapshots retained for delta compression |
+| `pipes-password` | *empty* | Optional server password |
+| `pipes-updaterate` | 20 | Desired snapshot receive rate |
+| `pipes-cmdrate` | 100 | Command send rate |
+| `pipes-interp` | 0.1 | Interpolation buffer (seconds) |
+| `pipes-interp-ratio` | 2 | Ratio applied to update rate for interp |
+| `pipes-ping-interval` | 0.5 | Ping measurement interval (seconds) |
 
-### Client
-
-| Variable | Default | Description |
-|---|---|---|
-| `cl-updaterate` | 20 | Desired snapshot receive rate |
-| `cl-cmdrate` | 100 | Command send rate |
-| `cl-interp` | 0.1 | Interpolation buffer (seconds) |
-| `cl-interp-ratio` | 2 | Ratio applied to update rate for interp |
-| `cl-ping-interval` | 0.5 | Ping measurement interval (seconds) |
-
-The effective interpolation delay is `max(cl-interp, cl-interp-ratio / cl-updaterate)`.
+The effective interpolation delay is `max(pipes-interp, pipes-interp-ratio / pipes-updaterate)`.
 
 ## License
 
