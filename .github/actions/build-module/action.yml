@@ -64,22 +64,15 @@ runs:
       # skip build isolation and rely on PYTHONPATH to find it.
       run: python -m build --wheel --no-isolation
 
-    # PyPI rejects bare "linux_*" tags.  Pin to manylinux2014
-    # (manylinux_2_17) so the wheel stays compatible with Panda3D's own
-    # wheels in build_apps.  The architecture is read from the wheel
-    # filename so this works for x86_64, aarch64, etc.
+    # PyPI rejects bare "linux_*" tags; auditwheel analyses the wheel's
+    # shared-library dependencies and assigns the most compatible
+    # manylinux tag automatically (works for x86_64, aarch64, etc.).
     - name: Repair wheel (Linux - auditwheel)
       if: runner.os == 'Linux'
       shell: bash
       run: |
         pip install auditwheel patchelf
         mkdir -p dist-repaired
-        WHEEL=$(ls dist/*.whl)
-        PLAT=$(basename "$WHEEL" .whl | awk -F'-' '{print $NF}')
-        MANYLINUX="${PLAT/linux/manylinux2014}"
-        echo "Targeting platform tag: $MANYLINUX"
-        auditwheel repair "$WHEEL" \
-          --plat "$MANYLINUX" \
-          -w dist-repaired
+        auditwheel repair dist/*.whl -w dist-repaired
         rm -rf dist
         mv dist-repaired dist
