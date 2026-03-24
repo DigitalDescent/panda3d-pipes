@@ -33,15 +33,48 @@ from panda3d_pipes.distributed.config import (
     sv_password,
     sv_tickrate,
 )
-from panda3d_pipes.clock import ClockDriftManager
 from panda3d_pipes.native import (
     CClientRepository,
     ClientFrame,
     ClientFrameManager,
     FrameSnapshot,
     FrameSnapshotManager,
+    NetworkClock,
 )
 from .objects import BaseObjectManager, DistributedObject
+
+# -- shared event routing for hosted (server + client in one process) sessions ---
+
+
+class _NetEvent:
+    """Lightweight copy of a SteamNetworking connection-state event."""
+    __slots__ = ('connection', 'state', 'old_state')
+
+    def __init__(self, connection: int, state: int, old_state: int) -> None:
+        self.connection = connection
+        self.state = state
+        self.old_state = old_state
+
+
+_pending_network_events: list[_NetEvent] = []
+_client_owned_connections: set[int] = set()
+
+
+def _drain_network_events(net_sys: SteamNetworkManager) -> None:
+    """Drain all pending connection-state events into a shared buffer.
+
+    Both :class:`ClientRepository` and :class:`ServerRepository` call this.
+    The first call per frame actually drains; subsequent calls are no-ops
+    because the underlying queue is already empty.
+    """
+    net_sys.run_callbacks()
+    event = net_sys.get_next_event()
+    while event:
+        _pending_network_events.append(
+            _NetEvent(event.connection, event.state, event.old_state)
+        )
+        event = net_sys.get_next_event()
+
 
 # --------------------------------------------------------------------------------
 
@@ -65,7 +98,7 @@ class ClientRepository(BaseObjectManager, CClientRepository):
         runtime.base.cl = self
         runtime.client = self
 
-        self.clock_drift_mgr: ClockDriftManager = ClockDriftManager()
+        self.net_clock: NetworkClock = NetworkClock.get_global_ptr()
 
         self.net_sys = SteamNetworkManager.get_global_ptr()
         self.connected: bool = False
@@ -109,12 +142,14 @@ class ClientRepository(BaseObjectManager, CClientRepository):
         self._configure_networking()
         self.server_address = address
         self.connection_handle = self.net_sys.connect_by_ip_address(address)
+        _client_owned_connections.add(self.connection_handle)
         self.connected = True
         self.start_client_loop()
 
     def disconnect(self) -> None:
         """Disconnect from the server."""
         if self.connection_handle is not None:
+            _client_owned_connections.discard(self.connection_handle)
             self.net_sys.close_connection(self.connection_handle)
             self.connection_handle = None
         self.connected = False
@@ -196,7 +231,7 @@ class ClientRepository(BaseObjectManager, CClientRepository):
         self.server_tick_count = dgi.getUint32()
         self.is_authed = True
 
-        runtime.base.setTickRate(self.server_tick_rate)
+        self.net_clock.set_tick_rate(self.server_tick_rate)
 
         self.notify.info(
             "Authenticated client_id=%i tick_rate=%i" % (self.client_id, self.server_tick_rate)
@@ -214,7 +249,7 @@ class ClientRepository(BaseObjectManager, CClientRepository):
 
         tick_count: int = dgi.getUint32()
         self.server_tick_count = tick_count
-        self.last_server_tick_time = runtime.base.ticksToTime(tick_count)
+        self.last_server_tick_time = self.net_clock.ticks_to_time(tick_count)
 
         is_delta: bool = bool(dgi.getUint8())
 
@@ -265,6 +300,8 @@ class ClientRepository(BaseObjectManager, CClientRepository):
         if has_baseline:
             self.unpack_object_state(dgi, do_id)
 
+        self._unpack_required_fields(dgi, do)
+
         do.generate()
         do.announce_generate()
         self.notify.info(
@@ -302,6 +339,8 @@ class ClientRepository(BaseObjectManager, CClientRepository):
         has_baseline: int = dgi.getUint8()
         if has_baseline:
             self.unpack_object_state(dgi, do_id)
+
+        self._unpack_required_fields(dgi, do)
 
         do.generate()
         do.announce_generate()
@@ -353,12 +392,50 @@ class ClientRepository(BaseObjectManager, CClientRepository):
         if hasattr(do, 'post_data_update'):
             do.post_data_update()
 
+    def _unpack_required_fields(self, dgi: Any, do: Any) -> None:
+        """Unpack ``required`` atomic fields appended after the baseline.
+
+        These are fields that carry the ``required`` keyword but are not
+        DC parameter fields, so they are not included in the baseline
+        :class:`PackedObject`.  The server packs them separately in
+        :meth:`ServerRepository._pack_required_fields`.
+        """
+        if dgi.getRemainingSize() < 2:
+            return
+
+        num_required: int = dgi.getUint16()
+        for _ in range(num_required):
+            if dgi.getRemainingSize() < 2:
+                break
+            field_index: int = dgi.getUint16()
+            field = do.dclass.getInheritedField(field_index)
+            if not field:
+                self.notify.warning(
+                    "Required field index %d not found on %s"
+                    % (field_index, do.dclass.getName())
+                )
+                return
+
+            packer = DCPacker()
+            packer.setUnpackData(dgi.getRemainingBytes())
+            packer.beginUnpack(field)
+            field.receiveUpdate(packer, do)
+            if not packer.endUnpack():
+                self.notify.warning(
+                    "Failed to unpack required field %s" % field.getName()
+                )
+                return
+            dgi.skipBytes(packer.getNumUnpackedBytes())
+
     def run_callbacks(self) -> None:
-        self.net_sys.run_callbacks()
-        event = self.net_sys.get_next_event()
-        while event:
-            self._handle_client_net_event(event)
-            event = self.net_sys.get_next_event()
+        _drain_network_events(self.net_sys)
+        remaining: list[_NetEvent] = []
+        for event in _pending_network_events:
+            if event.connection == self.connection_handle:
+                self._handle_client_net_event(event)
+            else:
+                remaining.append(event)
+        _pending_network_events[:] = remaining
 
     def _handle_client_net_event(self, event: Any) -> None:
         if event.state == SteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
@@ -580,6 +657,7 @@ class ServerRepository(BaseObjectManager):
 
         self.client_sender: ServerRepository.Client | None = None
 
+        self.net_clock: NetworkClock = NetworkClock.get_global_ptr()
         self.listen_port: int = listen_port
         self.net_sys = SteamNetworkManager.get_global_ptr()
         self._configure_networking()
@@ -595,7 +673,7 @@ class ServerRepository(BaseObjectManager):
 
         self.objects_by_zone_id: dict[int, list[Any]] = {}
 
-        runtime.base.setTickRate(sv_tickrate.getValue())
+        self.net_clock.set_tick_rate(sv_tickrate.getValue())
         runtime.base.taskMgr.add(self.run_frame, "serverRunFrame", sort=-100)
         runtime.base.taskMgr.add(self._take_snapshot_task, "serverTakeSnapshot", sort=100)
 
@@ -713,12 +791,12 @@ class ServerRepository(BaseObjectManager):
         return task.cont
 
     def _client_needs_update(self, client: ServerRepository.Client) -> bool:
-        return client.is_verified() and client.next_update_time <= runtime.base.clockMgr.getTime()
+        return client.is_verified() and client.next_update_time <= self.net_clock.get_time()
 
     # -- snapshots ------------------------------------------------------------
 
     def _take_snapshot_task(self, task: Any) -> Any:
-        self._take_tick_snapshot(runtime.base.tickCount)
+        self._take_tick_snapshot(self.net_clock.get_tick_count())
         return task.cont
 
     def _take_tick_snapshot(self, tick_count: int) -> None:
@@ -730,7 +808,7 @@ class ServerRepository(BaseObjectManager):
         for _, client in self.clients_by_connection.items():
             if self._client_needs_update(client):
                 client_zones |= client.current_interest_zone_ids
-                client.next_update_time = runtime.base.clockMgr.getTime() + client.update_interval
+                client.next_update_time = self.net_clock.get_time() + client.update_interval
                 client.setup_pack_info(snap)
                 clients_needing_snapshots.append(client)
 
@@ -785,12 +863,14 @@ class ServerRepository(BaseObjectManager):
     # -- network I/O ----------------------------------------------------------
 
     def run_callbacks(self) -> None:
-        self.net_sys.run_callbacks()
-
-        event = self.net_sys.get_next_event()
-        while event:
-            self.__handle_net_callback(event.connection, event.state, event.old_state)
-            event = self.net_sys.get_next_event()
+        _drain_network_events(self.net_sys)
+        remaining: list[_NetEvent] = []
+        for event in _pending_network_events:
+            if event.connection not in _client_owned_connections:
+                self.__handle_net_callback(event.connection, event.state, event.old_state)
+            else:
+                remaining.append(event)
+        _pending_network_events[:] = remaining
 
     def reader_poll_until_empty(self) -> None:
         while self._reader_poll_once():
@@ -1095,6 +1175,74 @@ class ServerRepository(BaseObjectManager):
         else:
             dg.addUint8(0)
 
+        self._pack_required_fields(dg, obj)
+
+    def _get_required_field_value(
+        self, obj: Any, field: Any,
+    ) -> list[Any] | None:
+        """Return the value of a required atomic field from *obj*.
+
+        Uses the traditional DC getter convention (``setFoo`` -> ``getFoo``),
+        falling back to a direct attribute lookup.
+        """
+        name: str = field.getName()
+        if name.startswith('set'):
+            getter_name = 'g' + name[1:]
+        else:
+            getter_name = 'get' + name[0].upper() + name[1:]
+
+        getter = getattr(obj, getter_name, None)
+        if getter is not None and callable(getter):
+            result = getter()
+            if not isinstance(result, (tuple, list)):
+                result = (result,)
+            return list(result)
+
+        val = getattr(obj, name, None)
+        if val is not None and not callable(val):
+            if not isinstance(val, (tuple, list)):
+                val = (val,)
+            return list(val)
+
+        return None
+
+    def _pack_required_fields(self, dg: PyDatagram, obj: Any) -> None:
+        """Pack ``required`` atomic fields that are not in the baseline.
+
+        Parameter fields are already encoded in the baseline
+        :class:`PackedObject`.  This packs any remaining atomic fields
+        that carry the ``required`` keyword so the client receives their
+        initial values in the generate message.
+        """
+        packed: list[tuple[int, bytes]] = []
+        dclass = obj.dclass
+        for i in range(dclass.getNumInheritedFields()):
+            field = dclass.getInheritedField(i)
+            if field.asParameter():
+                continue  # already in baseline
+            if not field.hasKeyword("required"):
+                continue
+
+            args = self._get_required_field_value(obj, field)
+            packer = DCPacker()
+            packer.beginPack(field)
+            if args is not None:
+                field.packArgs(packer, args)
+            else:
+                packer.packDefaultValue()
+            if not packer.endPack():
+                self.notify.warning(
+                    "Failed to pack required field %s on %s"
+                    % (field.getName(), repr(obj))
+                )
+                continue
+            packed.append((i, packer.getBytes()))
+
+        dg.addUint16(len(packed))
+        for field_index, data in packed:
+            dg.addUint16(field_index)
+            dg.appendData(data)
+
     def _update_client_interest_zones(self, client: ServerRepository.Client) -> None:
         orig_zone_ids = client.current_interest_zone_ids
         new_zone_ids = client.explicit_interest_zone_ids | set(client.objects_by_zone_id.keys())
@@ -1225,8 +1373,8 @@ class ServerRepository(BaseObjectManager):
 
             dg.addBool(False)
             dg.addUint16(client.id)
-            dg.addUint8(runtime.base.ticksPerSec)
-            dg.addUint32(runtime.base.tickCount)
+            dg.addUint8(self.net_clock.get_tick_rate())
+            dg.addUint32(self.net_clock.get_tick_count())
 
             self.num_clients += 1
 

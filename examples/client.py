@@ -23,7 +23,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from panda3d.core import loadPrcFileData, ClockObject, NetAddress
+from panda3d.core import loadPrcFileData, NetAddress
 
 loadPrcFileData("", """
 window-type none
@@ -33,70 +33,7 @@ dc-file examples/example.dc
 
 from panda3d_steamworks.showbase import SteamShowBase
 
-
-class GameShowBase(SteamShowBase):
-    """SteamShowBase extended with tick-rate bookkeeping expected by ClientRepository."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.tickCount = 0
-        self.intervalPerTick = 0.0
-        self.remainder = 0.0
-        self._tickAccum = 0.0
-        self.clockMgr = self._ClockMgr(self)
-        self.taskMgr.add(self._tick_task, "tickTask", sort=-200)
-
-    class _ClockMgr:
-        def __init__(self, base):
-            self._base = base
-            self._client_time = 0.0
-            self._prev_tick_count = 0
-
-        def getTime(self):
-            return ClockObject.getGlobalClock().getRealTime()
-
-        def getClientTime(self):
-            return self._client_time
-
-        def networkToClientTime(self, server_time):
-            """Convert a server timestamp to client-local time.
-
-            In a simple setup without sophisticated clock correction the
-            server tick time is just used directly.
-            """
-            return server_time
-
-        @property
-        def simulationDeltaNoRemainder(self):
-            delta_ticks = self._base.tickCount - self._prev_tick_count
-            return delta_ticks * self._base.intervalPerTick
-
-    def setTickRate(self, rate):
-        self.intervalPerTick = 1.0 / rate
-
-    def ticksToTime(self, ticks):
-        return ticks * self.intervalPerTick
-
-    def timeToTicks(self, time_val):
-        if self.intervalPerTick <= 0:
-            return 0
-        return int(time_val / self.intervalPerTick + 0.5)
-
-    def _tick_task(self, task):
-        dt = ClockObject.getGlobalClock().getDt()
-        if self.intervalPerTick <= 0:
-            return task.cont
-        self._tickAccum += dt
-        self.clockMgr._prev_tick_count = self.tickCount
-        while self._tickAccum >= self.intervalPerTick:
-            self._tickAccum -= self.intervalPerTick
-            self.tickCount += 1
-        self.remainder = self._tickAccum
-        self.clockMgr._client_time += dt
-        return task.cont
-
-
-base = GameShowBase(windowType="none")
+base = SteamShowBase(windowType="none")
 
 from panda3d_pipes.distributed.repository import ClientRepository
 from panda3d_pipes.distributed.config import sv_password

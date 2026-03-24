@@ -23,37 +23,8 @@ import os
 # Ensure the examples package is importable.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from panda3d.core import loadPrcFileData, ClockObject
+from panda3d.core import loadPrcFileData
 from panda3d_steamworks.showbase import SteamShowBase
-
-
-class GameShowBase(SteamShowBase):
-    """SteamShowBase extended with tick-rate bookkeeping expected by ServerRepository."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.ticksPerSec = 30
-        self.tickCount = 0
-        self._tickInterval = 1.0 / self.ticksPerSec
-        self._tickAccum = 0.0
-        self.clockMgr = self._ClockMgr()
-        self.taskMgr.add(self._tickTask, "tickTask", sort=-200)
-
-    class _ClockMgr:
-        def getTime(self):
-            return ClockObject.getGlobalClock().getRealTime()
-
-    def setTickRate(self, rate):
-        self.ticksPerSec = rate
-        self._tickInterval = 1.0 / rate
-
-    def _tickTask(self, task):
-        dt = ClockObject.getGlobalClock().getDt()
-        self._tickAccum += dt
-        while self._tickAccum >= self._tickInterval:
-            self._tickAccum -= self._tickInterval
-            self.tickCount += 1
-        return task.cont
 
 
 # Server-side PRC configuration.
@@ -66,9 +37,10 @@ pipes-max-clients 8
 """)
 
 # Start Panda3D in headless mode.
-base = GameShowBase(windowType="none")
+base = SteamShowBase(windowType="none")
 
 from panda3d_pipes.distributed.repository import ServerRepository
+from panda3d_pipes.native import NetworkClock
 from examples.objects import DistributedChatAI, DistributedAvatarAI
 
 import math
@@ -103,7 +75,7 @@ class ExampleServer(ServerRepository):
         self.accept("clientConnected", self.on_client_connected)
         self.accept("clientDisconnected", self.on_client_disconnected)
 
-        print(f"[Server] Listening on port 27015 (tick rate: {base.ticksPerSec})")
+        print(f"[Server] Listening on port 27015 (tick rate: {NetworkClock.get_global_ptr().get_tick_rate()})")
         print(f"[Server] NPC avatar {self.npc.do_id} orbiting in zone {ZONE_LOBBY}")
         print("[Server] Waiting for clients...")
 

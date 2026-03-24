@@ -2,6 +2,7 @@
 #include "config_module.h"
 #include "dconfig.h"
 
+#include "networkClock.h"
 #include "packedObject.h"
 #include "clientFrame.h"
 #include "frameSnapshot.h"
@@ -31,6 +32,7 @@ init_libpipes() {
   ClientFrame::init_type();
   FrameSnapshot::init_type();
   FrameSnapshotEntry::init_type();
+  NetworkClock::init_type();
   PackedObject::init_type();
 
   return;

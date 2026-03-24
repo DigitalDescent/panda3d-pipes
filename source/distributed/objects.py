@@ -31,6 +31,7 @@ from panda3d_pipes.native import (
     InterpolatedVec3,
     InterpolatedVec4,
     InterpolationContext,
+    NetworkClock,
 )
 
 # --------------------------------------------------------------------------------
@@ -235,8 +236,9 @@ class DistributedObject(BaseDistributedObject):
     def interpolate_objects() -> None:
         ctx = InterpolationContext()
         ctx.enable_extrapolation(True)
+        net_clock = NetworkClock.get_global_ptr()
         ctx.set_last_timestamp(
-            runtime.base.clockMgr.networkToClientTime(runtime.base.cl.last_server_tick_time)
+            net_clock.network_to_client_time(runtime.base.cl.last_server_tick_time)
         )
         for do in set(DistributedObject.interpolate_list):
             do.interpolate(globalClock.getFrameTime())
@@ -300,11 +302,12 @@ class DistributedObject(BaseDistributedObject):
                     entry.setter(entry.var.get_last_networked_value())
 
     def get_interpolate_amount(self) -> float:
+        net_clock = NetworkClock.get_global_ptr()
         if self.predictable:
-            return runtime.base.intervalPerTick
+            return net_clock.get_interval_per_tick()
         server_tick_multiple: int = 1
-        return runtime.base.ticksToTime(
-            runtime.base.timeToTicks(get_client_interp_amount()) + server_tick_multiple
+        return net_clock.ticks_to_time(
+            net_clock.time_to_ticks(get_client_interp_amount()) + server_tick_multiple
         )
 
     def reset_interpolated_vars(self) -> None:
@@ -344,14 +347,15 @@ class DistributedObject(BaseDistributedObject):
                 val = entry.getter(entry.array_index)
             else:
                 val = entry.getter()
-            entry.var.record_last_networked_value(val, runtime.base.clockMgr.getClientTime())
+            entry.var.record_last_networked_value(val, NetworkClock.get_global_ptr().get_client_time())
 
     def interpolate(self, now: float) -> None:  # noqa: C901
         if self.predictable:
-            now = runtime.base.localAvatar.finalPredictedTick * runtime.base.intervalPerTick
-            now -= runtime.base.intervalPerTick
-            now += runtime.base.clockMgr.simulationDeltaNoRemainder
-            now += runtime.base.remainder
+            net_clock = NetworkClock.get_global_ptr()
+            now = runtime.base.localAvatar.finalPredictedTick * net_clock.get_interval_per_tick()
+            now -= net_clock.get_interval_per_tick()
+            now += net_clock.get_simulation_delta_no_remainder()
+            now += net_clock.get_remainder()
 
         done: bool = True
         if now < self.last_interpolation_time:
@@ -402,7 +406,7 @@ class DistributedObject(BaseDistributedObject):
 
         if not self.predictable:
             self.on_latch_interpolated_vars(
-                runtime.base.clockMgr.getClientTime(),
+                NetworkClock.get_global_ptr().get_client_time(),
                 DistributedObject.SIMULATION_VAR,
             )
         else:
